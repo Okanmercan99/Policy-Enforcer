@@ -1,22 +1,72 @@
 package TeamAware.Policy.Enforcer.controller;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import TeamAware.Policy.Enforcer.module.Message;
 
+import lombok.extern.slf4j.Slf4j;
 // REST Endpoint controller.
 // You modify endpoints from here.
 
 @RestController
+@Slf4j
 @RequestMapping("/api")
 @CrossOrigin("*")
 public class ResourceController {
+
+    @Autowired
+    private Environment env;
+    
+    public void sendToNifi(String message, String path) throws IOException {
+        
+        URL url = new URL("http", env.getProperty("nifi.endpoint"), 
+                            Integer.parseInt(env.getProperty("nifi.port")),
+                            path);
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+
+        if (message.contains("ADS")) {
+            con.setRequestProperty("Content-Type", "application/xml; charset=UTF-8");
+        } else {
+            con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+        }
+
+        con.setRequestProperty("Accept", "application/json");
+        con.setDoOutput(true);
+        con.setRequestProperty("X-HTTP-Method-Override", "PATCH");
+        con.setRequestMethod("POST");
+        try (OutputStream os = con.getOutputStream()) {
+            byte[] input = message.getBytes("utf-8");
+            os.write(input);
+            log.info("Request is sent to Nifi");
+        } catch (Exception e) {
+            log.error("I/O Error occured during sending message to Nifi.");
+            e.printStackTrace();
+        }
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream(), "utf-8"))) {
+            StringBuilder response = new StringBuilder();
+            String responseLine = null;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+            log.info("Response :\n" + response.toString());
+        }
+    }
     
     //ADS Data
     @GetMapping("/ADSData")
@@ -25,7 +75,12 @@ public class ResourceController {
     }
 
     @PostMapping("/ADSData")
-    public Message createADSData() {
+    public Message createADSData(@RequestBody String message) {
+        try {
+            sendToNifi(message, "/api/ADSData");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return new Message("Create ADS Data");
     }
     @PutMapping("/ADSData")
