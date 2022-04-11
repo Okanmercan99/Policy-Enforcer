@@ -300,7 +300,12 @@ public class ResourceController {
     }
 
     @PostMapping("/VSASData")
-    public Message createVSASData() {
+    public Message createVSASData(@RequestBody String message) {
+        try {
+            sendToNifi(message, "/api/VSASData");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return new Message("Create VSAS Data");
     }
     @PutMapping("/VSASData")
