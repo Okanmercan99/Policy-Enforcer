@@ -160,7 +160,12 @@ public class ResourceController {
     }
 
     @PostMapping("/COILSData")
-    public Message createCOILSData() {
+    public Message createCOILSData(@RequestBody String message) {
+        try {
+            sendToNifi(message, "/api/COILSData");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return new Message("Create COILS Data");
     }
     @PutMapping("/COILSData")
