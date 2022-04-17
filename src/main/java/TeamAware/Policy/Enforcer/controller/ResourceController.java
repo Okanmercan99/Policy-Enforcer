@@ -100,7 +100,12 @@ public class ResourceController {
     }
 
     @PostMapping("/AMSData")
-    public Message createAMSData() {
+    public Message createAMSData(@RequestBody String message) {
+        try {
+            sendToNifi(message, "/api/AMSData");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return new Message("Create AMS Data");
     }
     @PutMapping("/AMSData")
